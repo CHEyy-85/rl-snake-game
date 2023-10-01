@@ -54,9 +54,3 @@ def agent_learn(experiences, gamma): # one training step
     optimizer.apply_gradients(zip(gradients, q_net.trainable_variables))
     # softupdate target_q_net
     helper_functions.target_qNet_softupdate(q_net, target_q_net)
-
-
-print(q_net.summary())
-
-
-print(q_net(np.array([[1,1,1,1,1,1,1,1,1,1,1]])))
