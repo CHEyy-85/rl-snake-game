@@ -1,15 +1,14 @@
 import numpy as np
-import tensorflow as tf
+import torch
 import random
 import helper_functions
 from collections import deque, namedtuple
 from ENV_snake_game_AI import SnakeGameAI, Points, Directions, GRID_SIZE
-import model_trainer
 from model_trainer import q_net, target_q_net, optimizer, compute_loss, agent_learn
 from statistics import mean
 
 MAX_MEMORY_LENGTH = 100000
-GAMMA = 0.995
+GAMMA = 0.95
 NUM_OF_GAME_FOR_AVG = 10
 
 Experiences = namedtuple('Experiences', ['state', 'action', 'reward', 'next_state', 'done'])
@@ -18,21 +17,22 @@ class Agent:
 
     def __init__(self) -> None:
         self.num_of_games = 0
-        self.memory = deque(maxlen = MAX_MEMORY_LENGTH)
-        #TODO: model and trainer
+        self.memory = deque(maxlen=MAX_MEMORY_LENGTH)
 
     def get_state(self, game_env):
-        head = game_env.snake[0]
+        head = game_env.snake[0]  # Snake's head
+        mid_body = game_env.snake[len(game_env.snake) // 2]  # Middle of the snake's body
+        tail = game_env.snake[-1]  # Tail position
         up_point = Points(head.x, head.y - GRID_SIZE)
         right_point = Points(head.x + GRID_SIZE, head.y)
         down_point = Points(head.x, head.y + GRID_SIZE)
         left_point = Points(head.x - GRID_SIZE, head.y)
-        
+
         up_dir = game_env.direction == Directions.UP
         right_dir = game_env.direction == Directions.RIGHT
         down_dir = game_env.direction == Directions.DOWN
         left_dir = game_env.direction == Directions.LEFT
-        
+
         state = [
             # danger straight
             up_dir and game_env.is_over(up_point) or 
@@ -63,13 +63,20 @@ class Agent:
             game_env.apple.x > game_env.head.x, # r
             game_env.apple.y > game_env.head.y, # d
             game_env.apple.x < game_env.head.x # l
+            
+            # head.x, head.y,
+            # game_env.apple.x, game_env.apple.y,
+            # tail.x, tail.y,
+            # mid_body.x, mid_body.y
         ]
-        return np.array(state, dtype=int)
+        return np.array(state, dtype=float)
+
 
     def record_expereince(self, state, action, reward, next_state, done):
         self.memory.append(Experiences(state, action, reward, next_state, done))
 
     def get_action(self, state):
+        q_net.eval()
         epsilon = helper_functions.get_epsilon(self.num_of_games)
         action = [0,0,0]
         if random.random() < epsilon:
@@ -78,20 +85,20 @@ class Agent:
             action[move_idx] = 1
         else:
             print("Model")
-            state = tf.convert_to_tensor(np.expand_dims(state, axis = 0), dtype = tf.float32)
+            state = torch.tensor(state, dtype=torch.float32).unsqueeze(0)
             predicted_q_value = q_net(state)
-            move_idx = tf.argmax(predicted_q_value, axis = 1).numpy()[0]
+            move_idx = torch.argmax(predicted_q_value, dim=1).item()
             action[move_idx] = 1
         return action
     
     def train_with_experiences(self):
-        experiences = helper_functions.get_experiences_for_replay(self.memory)
-        tf.function(agent_learn(experiences, GAMMA))
+        experiences = helper_functions.get_experiences_for_replay(self.memory, mini_batch_size=helper_functions.MINI_BATCH_SIZE)
+        agent_learn(experiences, GAMMA)
 
 
 def train_model():
 
-    target_q_net.set_weights(q_net.get_weights())
+    target_q_net.load_state_dict(q_net.state_dict())
 
     scores = []
     mean_scores_last_10 = []
@@ -116,8 +123,8 @@ def train_model():
             agent.num_of_games += 1
             if score > record_score:
                 record_score = score
-                q_net.save('AI_Snake_model.h5')
-            
+                torch.save(q_net.state_dict(), 'AI_Snake_model.pth')
+
             scores.append(score)
             score_last_10_games.append(score)
             mean_score_last_10 = mean(score_last_10_games)

@@ -63,7 +63,7 @@ class SnakeGameAI:
             self.place_apple() # Replace apple when eaten
             
 
-    def is_over(self, point = None):
+    def is_over(self, point=None):
         if point is None:
             point = self.head
         # hit walls
@@ -139,11 +139,10 @@ class SnakeGameAI:
         self.head_next(action)
         self.snake.insert(0,self.head)
 
-        reward = 0
+        reward = -0.01
         # penalty for turns
         if np.array_equal(action, [0,1,0]) or np.array_equal(action, [0,0,1]):
             reward -= 1
-
         # penalty for collision
         over = False
         if self.is_over() or self.frame > 100 * len(self.snake):
@@ -164,10 +163,12 @@ class SnakeGameAI:
             after_H_T_distance = self.manhatten_distance(self.head, self.snake[-1])
             if after_H_A_distance < pre_H_A_distance:
                 reward += 0.5
+            else:
+                reward -= 1
             if after_H_T_distance <= pre_H_T_distance:
                 reward -= 1
 
-        # update
+        
         self.update_interface()
         self.clock.tick(SNAKE_SPEED)
 

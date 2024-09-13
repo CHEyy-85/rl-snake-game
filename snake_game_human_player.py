@@ -45,7 +45,7 @@ class SnakeGameHuman:
         # Initialize game state
         self.direction = Directions.UP # heading up
         self.head = Points(self.width / 2, 3*self.height / 4) # start position
-        print(self.head)
+        
         self.snake = [self.head, Points(self.head.x, self.head.y + GRID_SIZE), 
                       Points(self.head.x, self.head.y + (2 * GRID_SIZE))] # initial length = 3
         self.score = 0
@@ -128,8 +128,6 @@ class SnakeGameHuman:
         if self.is_over():
             over = True
             return over, self.score
-        print(self.head)
-        print(self.apple)
         # place new apple or move 
         self.grid[int(self.head.y // GRID_SIZE), int(self.head.x // GRID_SIZE)] = 1
         if self.head == self.apple:
@@ -155,5 +153,4 @@ if __name__ == '__main__':
             break
 
     print(f"Final Score: {score}")
-    print(humanGame.grid)
     pygame.quit()
